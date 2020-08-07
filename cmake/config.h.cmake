@@ -12,6 +12,9 @@
 // Define if you require webready support.
 #cmakedefine EXV_ENABLE_WEBREADY
 
+// Define if you require HEIF support.
+#cmakedefine EXIV2_ENABLE_HEIF
+
 // Define if you have the <libintl.h> header file.
 #cmakedefine EXV_HAVE_LIBINTL_H
 

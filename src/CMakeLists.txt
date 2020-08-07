@@ -109,6 +109,10 @@ if( EXIV2_ENABLE_PNG )
     target_sources(exiv2lib PRIVATE pngimage.cpp ../include/exiv2/pngimage.hpp)
 endif()
 
+if( EXIV2_ENABLE_HEIF )
+    target_sources(exiv2lib PRIVATE heifimage.cpp ../include/exiv2/heifimage.hpp)
+endif()
+
 if( EXIV2_ENABLE_VIDEO )
     target_sources(exiv2lib PRIVATE
         asfvideo.cpp            ../include/exiv2/asfvideo.hpp

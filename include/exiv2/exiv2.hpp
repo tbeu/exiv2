@@ -53,6 +53,10 @@
 #include "exiv2/orfimage.hpp"
 #include "exiv2/pgfimage.hpp"
 
+#ifdef EXIV2_ENABLE_HEIF
+# include "exiv2/heifimage.hpp"
+#endif
+
 #ifdef   EXV_HAVE_LIBZ
 #include "exiv2/pngimage.hpp"
 #endif

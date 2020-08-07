@@ -35,6 +35,9 @@
 #include "crwimage.hpp"
 #include "epsimage.hpp"
 #include "jpgimage.hpp"
+#ifdef EXIV2_ENABLE_HEIF
+# include "heifimage.hpp"
+#endif
 #include "mrwimage.hpp"
 #ifdef EXV_HAVE_LIBZ
 # include "pngimage.hpp"
@@ -133,6 +136,9 @@ namespace {
         { ImageType::tga,  newTgaInstance,  isTgaType,  amNone,      amNone,      amNone,      amNone      },
         { ImageType::bmp,  newBmpInstance,  isBmpType,  amNone,      amNone,      amNone,      amNone      },
         { ImageType::jp2,  newJp2Instance,  isJp2Type,  amReadWrite, amReadWrite, amReadWrite, amNone      },
+#ifdef EXIV2_ENABLE_HEIF
+        { ImageType::heif, newHeifInstance, isHeifType, amRead,      amRead,      amRead,      amNone      },
+#endif
 #ifdef EXV_ENABLE_VIDEO
         { ImageType::qtime,newQTimeInstance,isQTimeType,amRead,      amNone,      amRead,      amNone      },
         { ImageType::riff, newRiffInstance, isRiffType, amRead,      amNone,      amRead,      amNone      },
