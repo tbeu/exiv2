@@ -15,6 +15,7 @@
 #include "exiv2lib_export.h"
 
 #include "config.h"
+#include "types.hpp"
 
 #include <exception>  // for exception
 #include <sstream>    // for operator<<, ostream, ostringstream, bas...
@@ -275,7 +276,21 @@ class EXIV2API Error : public std::exception {
            is valid only as long as the BasicError object exists.
    */
   [[nodiscard]] const char* what() const noexcept override;
+#ifdef _WIN32
+  /*!
+    @brief Return the error message as a wide string. The pointer returned by wwhat()
+           is valid only as long as the Error object exists.
+   */
+  [[nodiscard]] const wchar_t* wwhat() const noexcept;
+#endif
   //@}
+
+#ifdef _WIN32
+ protected:
+  //! Assemble the wide error message from wide string arguments
+  void setWMsg(int count, const std::wstring& warg1 = {}, const std::wstring& warg2 = {},
+               const std::wstring& warg3 = {});
+#endif
 
  private:
   //! @name Manipulators
@@ -290,12 +305,45 @@ class EXIV2API Error : public std::exception {
   std::string arg2_;  //!< Second argument
   std::string arg3_;  //!< Third argument
   std::string msg_;   //!< Complete error message
+#ifdef _WIN32
+  std::wstring wmsg_;  //!< Complete error message as a wide string
+#endif
 };
 
 //! %Error output operator
 inline std::ostream& operator<<(std::ostream& os, const Error& error) {
   return os << error.what();
 }
+
+#ifdef _WIN32
+/*!
+  @brief Simple error class used for exceptions, taking std::wstring arguments.
+         Derives from Error so it can be caught as either WError or Error.
+ */
+class EXIV2API WError : public Error {
+ public:
+  //! Constructor taking only an error code
+  explicit WError(ErrorCode code) : Error(code) {
+    setWMsg(0);
+  }
+
+  //! Constructor taking an error code and one wide string argument
+  WError(ErrorCode code, const std::wstring& arg1) : Error(code, ws2s(arg1)) {
+    setWMsg(1, arg1);
+  }
+
+  //! Constructor taking an error code and two wide string arguments
+  WError(ErrorCode code, const std::wstring& arg1, const std::wstring& arg2) : Error(code, ws2s(arg1), ws2s(arg2)) {
+    setWMsg(2, arg1, arg2);
+  }
+
+  //! Constructor taking an error code and three wide string arguments
+  WError(ErrorCode code, const std::wstring& arg1, const std::wstring& arg2, const std::wstring& arg3) :
+      Error(code, ws2s(arg1), ws2s(arg2), ws2s(arg3)) {
+    setWMsg(3, arg1, arg2, arg3);
+  }
+};
+#endif
 
 #ifdef _MSC_VER
 #pragma warning(default : 4275)

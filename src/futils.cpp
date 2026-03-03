@@ -7,6 +7,7 @@
 #include "enforce.hpp"
 #include "error.hpp"
 #include "image_int.hpp"
+#include "types.hpp"
 #include "utils.hpp"
 
 // + standard includes
@@ -231,6 +232,12 @@ Protocol fileProtocol(const std::string& path) {
   return result;
 }  // fileProtocol
 
+#ifdef _WIN32
+Protocol fileProtocol(const std::wstring& wpath) {
+  return fileProtocol(ws2s(wpath));
+}
+#endif
+
 bool fileExists(const std::string& path) {
   if (fileProtocol(path) != pFile) {
     return true;
@@ -241,6 +248,19 @@ bool fileExists(const std::string& path) {
   return false;
 #endif
 }
+
+#ifdef _WIN32
+bool fileExists(const std::wstring& wpath) {
+  if (fileProtocol(wpath) != pFile) {
+    return true;
+  }
+#ifdef EXV_ENABLE_FILESYSTEM
+  return fs::exists(wpath);
+#else
+  return false;
+#endif
+}
+#endif
 
 std::string strError() {
   int error = errno;

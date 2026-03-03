@@ -188,6 +188,42 @@ void Error::setMsg(int count) {
     }
   }
   msg_ = msg;
+#ifdef _WIN32
+  wmsg_ = s2ws(msg_);
+#endif
 }
+
+#ifdef _WIN32
+const wchar_t* Error::wwhat() const noexcept {
+  return wmsg_.c_str();
+}
+
+void Error::setWMsg(int count, const std::wstring& warg1, const std::wstring& warg2, const std::wstring& warg3) {
+  std::wstring wmsg = s2ws(_(errList.at(static_cast<size_t>(code_))));
+  auto pos = wmsg.find(L"%0");
+  if (pos != std::wstring::npos) {
+    wmsg.replace(pos, 2, std::to_wstring(static_cast<int>(code_)));
+  }
+  if (count > 0) {
+    pos = wmsg.find(L"%1");
+    if (pos != std::wstring::npos) {
+      wmsg.replace(pos, 2, warg1);
+    }
+  }
+  if (count > 1) {
+    pos = wmsg.find(L"%2");
+    if (pos != std::wstring::npos) {
+      wmsg.replace(pos, 2, warg2);
+    }
+  }
+  if (count > 2) {
+    pos = wmsg.find(L"%3");
+    if (pos != std::wstring::npos) {
+      wmsg.replace(pos, 2, warg3);
+    }
+  }
+  wmsg_ = wmsg;
+}
+#endif
 
 }  // namespace Exiv2

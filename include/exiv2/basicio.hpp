@@ -220,6 +220,14 @@ class EXIV2API BasicIo {
    */
   [[nodiscard]] virtual const std::string& path() const noexcept = 0;
 
+#ifdef _WIN32
+  /*!
+    @brief Like path() but returns a unicode path in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  [[nodiscard]] virtual std::wstring wpath() const = 0;
+#endif
+
   /*!
     @brief Mark all the bNone blocks to bKnow. This avoids allocating memory
       for parts of the file that contain image-date (non-metadata/pixel data)
@@ -292,6 +300,15 @@ class EXIV2API FileIo : public BasicIo {
     @param path The full path of a file
    */
   explicit FileIo(const std::string& path);
+
+#ifdef _WIN32
+  /*!
+    @brief Like FileIo(const std::string& path) but accepts a
+        unicode path in an std::wstring.
+    @note This constructor is only available on Windows.
+   */
+  explicit FileIo(const std::wstring& wpath);
+#endif
 
   //! Destructor. Flushes and closes an open file.
   ~FileIo() override;
@@ -434,6 +451,15 @@ class EXIV2API FileIo : public BasicIo {
    */
   virtual void setPath(const std::string& path);
 
+#ifdef _WIN32
+  /*!
+    @brief Like setPath(const std::string& path) but accepts a
+        unicode path in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  virtual void setPath(const std::wstring& wpath);
+#endif
+
   //@}
   //! @name Accessors
   //@{
@@ -457,6 +483,14 @@ class EXIV2API FileIo : public BasicIo {
   [[nodiscard]] bool eof() const override;
   //! Returns the path of the file
   [[nodiscard]] const std::string& path() const noexcept override;
+
+#ifdef _WIN32
+  /*!
+    @brief Like path() but returns the unicode path of the file in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  [[nodiscard]] std::wstring wpath() const override;
+#endif
 
   /*!
     @brief Mark all the bNone blocks to bKnow. This avoids allocating memory
@@ -640,6 +674,11 @@ class EXIV2API MemIo : public BasicIo {
   //! Returns a dummy path, indicating that memory access is used
   [[nodiscard]] const std::string& path() const noexcept override;
 
+#ifdef _WIN32
+  //! Returns a dummy wide path, indicating that memory access is used
+  [[nodiscard]] std::wstring wpath() const override;
+#endif
+
   /*!
     @brief Mark all the bNone blocks to bKnow. This avoids allocating memory
       for parts of the file that contain image-date (non-metadata/pixel data)
@@ -674,6 +713,10 @@ class EXIV2API XPathIo : public MemIo {
   //@{
   //! Default constructor
   XPathIo(const std::string& path);
+#ifdef _WIN32
+  //! Like XPathIo(const std::string& path) but accepts a unicode path in an std::wstring.
+  XPathIo(const std::wstring& wpath);
+#endif
   //@}
  private:
   /*!
@@ -706,6 +749,10 @@ class EXIV2API XPathIo : public FileIo {
   //@{
   //! Default constructor that reads data from stdin/data uri path and writes them to the temp file.
   explicit XPathIo(const std::string& orgPath);
+#ifdef _WIN32
+  //! Like XPathIo(const std::string& orgPath) but accepts a unicode path in an std::wstring.
+  explicit XPathIo(const std::wstring& wOrgPath);
+#endif
 
   //! Destructor. Releases all managed memory and removes the temp file.
   ~XPathIo() override;
@@ -890,6 +937,11 @@ class EXIV2API RemoteIo : public BasicIo {
   //! Returns the URL of the file.
   [[nodiscard]] const std::string& path() const noexcept override;
 
+#ifdef _WIN32
+  //! Returns the URL of the file as a wide string.
+  [[nodiscard]] std::wstring wpath() const override;
+#endif
+
   /*!
     @brief Mark all the bNone blocks to bKnow. This avoids allocating memory
       for parts of the file that contain image-date (non-metadata/pixel data)
@@ -925,6 +977,14 @@ class EXIV2API HttpIo : public RemoteIo {
           on demand from the server, so it avoids copying the complete file.
    */
   explicit HttpIo(const std::string& url, size_t blockSize = 1024);
+#ifdef _WIN32
+  /*!
+    @brief Like HttpIo(const std::string& url, size_t blockSize) but accepts a
+        unicode URL in an std::wstring.
+    @note This constructor is only available on Windows.
+   */
+  HttpIo(const std::wstring& wurl, size_t blockSize = 1024);
+#endif
 
  private:
   // Pimpl idiom
@@ -950,6 +1010,14 @@ class EXIV2API CurlIo : public RemoteIo {
     @throw Error if it is unable to init curl pointer.
    */
   explicit CurlIo(const std::string& url, size_t blockSize = 0);
+#ifdef _WIN32
+  /*!
+    @brief Like CurlIo(const std::string& url, size_t blockSize) but accepts a
+        unicode URL in an std::wstring.
+    @note This constructor is only available on Windows.
+   */
+  CurlIo(const std::wstring& wurl, size_t blockSize = 0);
+#endif
 
   /*!
     @brief Write access is only available for some protocols. This method
@@ -985,6 +1053,19 @@ EXIV2API DataBuf readFile(const std::string& path);
   @throw Error In case of failure.
  */
 EXIV2API size_t writeFile(const DataBuf& buf, const std::string& path);
+#ifdef _WIN32
+/*!
+  @brief Like readFile(const std::string& path) but accepts a unicode path in an std::wstring.
+  @note This function is only available on Windows.
+ */
+EXIV2API DataBuf readFile(const std::wstring& wpath);
+/*!
+  @brief Like writeFile(const DataBuf& buf, const std::string& path) but accepts a unicode path
+         in an std::wstring.
+  @note This function is only available on Windows.
+ */
+EXIV2API size_t writeFile(const DataBuf& buf, const std::wstring& wpath);
+#endif
 #ifdef EXV_USE_CURL
 /*!
   @brief The callback function is called by libcurl to write the data

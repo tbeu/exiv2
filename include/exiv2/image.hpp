@@ -638,6 +638,34 @@ class EXIV2API ImageFactory {
     @return %Image type or Image::none if the type is not recognized.
    */
   static ImageType getType(BasicIo& io);
+
+#ifdef _WIN32
+  /*!
+    @brief Like createIo(const std::string& path, bool useCurl) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  static BasicIo::UniquePtr createIo(const std::wstring& wpath, bool useCurl = true);
+  /*!
+    @brief Like open(const std::string& path, bool useCurl) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  static Image::UniquePtr open(const std::wstring& wpath, bool useCurl = true);
+  /*!
+    @brief Like create(ImageType type, const std::string& path) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  static Image::UniquePtr create(ImageType type, const std::wstring& wpath);
+  /*!
+    @brief Like getType(const std::string& path) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  static ImageType getType(const std::wstring& wpath);
+#endif
+
   /*!
     @brief Returns the access mode or supported metadata functions for an
         image type and a metadata type.

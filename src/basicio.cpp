@@ -87,8 +87,9 @@ class FileIo::Impl {
   OpMode opMode_{opSeek};  //!< File open mode
 
 #if defined _WIN32
-  HANDLE hFile_{};  //!< Duplicated fd
-  HANDLE hMap_{};   //!< Handle from CreateFileMapping
+  std::wstring wpath_;  //!< Unicode path (kept in sync with path_)
+  HANDLE hFile_{};      //!< Duplicated fd
+  HANDLE hMap_{};       //!< Handle from CreateFileMapping
 #endif
   byte* pMappedArea_{};    //!< Pointer to the memory-mapped area
   size_t mappedLength_{};  //!< Size of the memory-mapped area
@@ -116,7 +117,13 @@ class FileIo::Impl {
   Impl& operator=(const Impl&) = delete;  //!< Assignment
 };
 
-FileIo::Impl::Impl(std::string path) : path_(std::move(path)) {
+FileIo::Impl::Impl(std::string path) :
+    path_(std::move(path))
+#ifdef _WIN32
+    ,
+    wpath_(s2ws(path_))
+#endif
+{
 }
 
 int FileIo::Impl::switchMode(OpMode opMode) {
@@ -166,7 +173,11 @@ int FileIo::Impl::switchMode(OpMode opMode) {
   std::fclose(fp_);
   openMode_ = "r+b";
   opMode_ = opSeek;
+#ifdef _WIN32
+  fp_ = _wfopen(wpath_.c_str(), s2ws(openMode_).c_str());
+#else
   fp_ = std::fopen(path_.c_str(), openMode_.c_str());
+#endif
   if (!fp_)
     return 1;
 #ifdef _WIN32
@@ -177,8 +188,13 @@ int FileIo::Impl::switchMode(OpMode opMode) {
 }  // FileIo::Impl::switchMode
 
 int FileIo::Impl::stat(StructStat& buf) const {
+#ifdef _WIN32
+  struct _stat st;
+  auto ret = _wstat(wpath_.c_str(), &st);
+#else
   struct stat st;
   auto ret = ::stat(path_.c_str(), &st);
+#endif
   if (ret == 0) {
     buf.st_size = st.st_size;
     buf.st_mode = st.st_mode;
@@ -188,6 +204,12 @@ int FileIo::Impl::stat(StructStat& buf) const {
 
 FileIo::FileIo(const std::string& path) : p_(std::make_unique<Impl>(path)) {
 }
+
+#ifdef _WIN32
+FileIo::FileIo(const std::wstring& wpath) : p_(std::make_unique<Impl>(ws2s(wpath))) {
+  p_->wpath_ = wpath;
+}
+#endif
 
 FileIo::~FileIo() {
   close();
@@ -306,7 +328,18 @@ byte* FileIo::mmap(bool isWriteable) {
 void FileIo::setPath(const std::string& path) {
   close();
   p_->path_ = path;
+#ifdef _WIN32
+  p_->wpath_ = s2ws(path);
+#endif
 }
+
+#ifdef _WIN32
+void FileIo::setPath(const std::wstring& wpath) {
+  close();
+  p_->path_ = ws2s(wpath);
+  p_->wpath_ = wpath;
+}
+#endif
 
 size_t FileIo::write(const byte* data, size_t wcount) {
   if (p_->switchMode(Impl::opWrite) != 0)
@@ -371,13 +404,15 @@ void FileIo::transfer(BasicIo& src) {
       // that file has been opened with FILE_SHARE_DELETE by another process,
       // like a virus scanner or disk indexer
       // (see also http://stackoverflow.com/a/11023068)
-      using ReplaceFileA_t = BOOL(WINAPI*)(LPCSTR, LPCSTR, LPCSTR, DWORD, LPVOID, LPVOID);
+      using ReplaceFileW_t = BOOL(WINAPI*)(LPCWSTR, LPCWSTR, LPCWSTR, DWORD, LPVOID, LPVOID);
       HMODULE hKernel = ::GetModuleHandleA("kernel32.dll");
       if (hKernel) {
-        auto pfcn_ReplaceFileA = reinterpret_cast<ReplaceFileA_t>(GetProcAddress(hKernel, "ReplaceFileA"));
-        if (pfcn_ReplaceFileA) {
-          BOOL ret =
-              pfcn_ReplaceFileA(pf, fileIo->path().c_str(), nullptr, REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr, nullptr);
+        auto pfcn_ReplaceFileW = reinterpret_cast<ReplaceFileW_t>(GetProcAddress(hKernel, "ReplaceFileW"));
+        if (pfcn_ReplaceFileW) {
+          const auto& wpf = p_->wpath_;
+          auto wSrcPath = s2ws(fileIo->path());
+          BOOL ret = pfcn_ReplaceFileW(wpf.c_str(), wSrcPath.c_str(), nullptr, REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr,
+                                       nullptr);
           if (ret == 0) {
             if (GetLastError() == ERROR_FILE_NOT_FOUND) {
               fs::rename(fileIo->path(), pf);
@@ -402,8 +437,13 @@ void FileIo::transfer(BasicIo& src) {
       fs::remove(fileIo->path());
 #endif
       // Check permissions of new file
+#ifdef _WIN32
+      struct _stat buf2;
+      if (statOk && _wstat(p_->wpath_.c_str(), &buf2) == -1) {
+#else
       struct stat buf2;
       if (statOk && ::stat(pf, &buf2) == -1) {
+#endif
         statOk = false;
 #ifndef SUPPRESS_WARNINGS
         EXV_WARNING << Error(ErrorCode::kerCallFailed, pf, strError(), "::stat") << "\n";
@@ -505,7 +545,11 @@ int FileIo::open(const std::string& mode) {
   close();
   p_->openMode_ = mode;
   p_->opMode_ = Impl::opSeek;
+#ifdef _WIN32
+  p_->fp_ = _wfopen(p_->wpath_.c_str(), s2ws(mode).c_str());
+#else
   p_->fp_ = ::fopen(path().c_str(), mode.c_str());
+#endif
   if (!p_->fp_)
     return 1;
   return 0;
@@ -563,6 +607,12 @@ bool FileIo::eof() const {
 const std::string& FileIo::path() const noexcept {
   return p_->path_;
 }
+
+#ifdef _WIN32
+std::wstring FileIo::wpath() const {
+  return p_->wpath_;
+}
+#endif
 
 void FileIo::populateFakeData() {
 }
@@ -857,6 +907,12 @@ const std::string& MemIo::path() const noexcept {
   return _path;
 }
 
+#ifdef _WIN32
+std::wstring MemIo::wpath() const {
+  return L"MemIo";
+}
+#endif
+
 void MemIo::populateFakeData() {
 }
 
@@ -906,9 +962,19 @@ void XPathIo::ReadDataUri(const std::string& path) {
   delete[] decodeData;
 }
 
+#ifdef _WIN32
+XPathIo::XPathIo(const std::wstring& wpath) : XPathIo(ws2s(wpath)) {
+}
+#endif
+
 #elif defined(EXV_ENABLE_FILESYSTEM)
 XPathIo::XPathIo(const std::string& orgPath) : FileIo(XPathIo::writeDataToFile(orgPath)), tempFilePath_(path()) {
 }
+
+#ifdef _WIN32
+XPathIo::XPathIo(const std::wstring& wOrgPath) : XPathIo(ws2s(wOrgPath)) {
+}
+#endif
 
 XPathIo::~XPathIo() {
   if (isTemp_ && !fs::remove(tempFilePath_)) {
@@ -1386,6 +1452,12 @@ const std::string& RemoteIo::path() const noexcept {
   return p_->path_;
 }
 
+#ifdef _WIN32
+std::wstring RemoteIo::wpath() const {
+  return s2ws(p_->path_);
+}
+#endif
+
 void RemoteIo::populateFakeData() {
   size_t nBlocks = (p_->size_ + p_->blockSize_ - 1) / p_->blockSize_;
   for (size_t i = 0; i < nBlocks; i++) {
@@ -1534,6 +1606,10 @@ void HttpIo::HttpImpl::writeRemote(const byte* data, size_t size, size_t from, s
 HttpIo::HttpIo(const std::string& url, size_t blockSize) {
   p_ = std::make_unique<HttpImpl>(url, blockSize);
 }
+#ifdef _WIN32
+HttpIo::HttpIo(const std::wstring& wurl, size_t blockSize) : HttpIo(ws2s(wurl), blockSize) {
+}
+#endif
 #endif
 
 #ifdef EXV_USE_CURL
@@ -1727,6 +1803,10 @@ size_t CurlIo::write(BasicIo& src) {
 CurlIo::CurlIo(const std::string& url, size_t blockSize) {
   p_ = std::make_unique<CurlImpl>(url, blockSize);
 }
+#ifdef _WIN32
+CurlIo::CurlIo(const std::wstring& wurl, size_t blockSize) : CurlIo(ws2s(wurl), blockSize) {
+}
+#endif
 
 #endif
 
@@ -1738,8 +1818,13 @@ DataBuf readFile(const std::string& path) {
   if (file.open("rb") != 0) {
     throw Error(ErrorCode::kerFileOpenFailed, path, "rb", strError());
   }
+#ifdef _WIN32
+  struct _stat st;
+  if (0 != _wstat(s2ws(path).c_str(), &st)) {
+#else
   struct stat st;
   if (0 != ::stat(path.c_str(), &st)) {
+#endif
     throw Error(ErrorCode::kerCallFailed, path, strError(), "::stat");
   }
   DataBuf buf(st.st_size);
@@ -1756,6 +1841,32 @@ size_t writeFile(const DataBuf& buf, const std::string& path) {
   }
   return file.write(buf.c_data(), buf.size());
 }
+
+#ifdef _WIN32
+DataBuf readFile(const std::wstring& wpath) {
+  FileIo file(wpath);
+  if (file.open("rb") != 0) {
+    throw WError(ErrorCode::kerFileOpenFailed, wpath, L"rb", s2ws(strError()));
+  }
+  struct _stat st;
+  if (0 != _wstat(wpath.c_str(), &st)) {
+    throw WError(ErrorCode::kerCallFailed, wpath, s2ws(strError()), L"::stat");
+  }
+  DataBuf buf(st.st_size);
+  if (file.read(buf.data(), buf.size()) != buf.size()) {
+    throw WError(ErrorCode::kerCallFailed, wpath, s2ws(strError()), L"FileIo::read");
+  }
+  return buf;
+}
+
+size_t writeFile(const DataBuf& buf, const std::wstring& wpath) {
+  FileIo file(wpath);
+  if (file.open("wb") != 0) {
+    throw WError(ErrorCode::kerFileOpenFailed, wpath, L"wb", s2ws(strError()));
+  }
+  return file.write(buf.c_data(), buf.size());
+}
+#endif
 #endif
 
 #ifdef EXV_USE_CURL

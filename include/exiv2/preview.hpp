@@ -23,6 +23,9 @@ using PreviewId = int;
 struct EXIV2API PreviewProperties {
   std::string mimeType_;   //!< Preview image mime type.
   std::string extension_;  //!< Preview image extension.
+#ifdef _WIN32
+  std::wstring wextension_;  //!< Unicode preview image extension.
+#endif
   size_t size_{};          //!< Preview image size in bytes.
   size_t width_{};         //!< Preview image width in pixels or 0 for unknown width.
   size_t height_{};        //!< Preview image height in pixels or 0 for unknown height.
@@ -80,6 +83,14 @@ class EXIV2API PreviewImage {
     @return The number of bytes written.
   */
   [[nodiscard]] size_t writeFile(const std::string& path) const;
+#ifdef _WIN32
+  /*!
+    @brief Like writeFile(const std::string& path) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  [[nodiscard]] size_t writeFile(const std::wstring& wpath) const;
+#endif
 #endif
   /*!
     @brief Return the MIME type of the preview image, usually either
@@ -91,6 +102,13 @@ class EXIV2API PreviewImage {
            (".tif" or ".jpg").
    */
   [[nodiscard]] std::string extension() const;
+#ifdef _WIN32
+  /*!
+    @brief Like extension() but returns the file extension as a wide string.
+    @note This function is only available on Windows.
+   */
+  [[nodiscard]] std::wstring wextension() const;
+#endif
   /*!
     @brief Return the width of the preview image in pixels.
   */

@@ -122,6 +122,13 @@ std::string pathOfFileUrl(const std::string& url) {
   size_t found = path.find('/');
   return (found == std::string::npos) ? path : path.substr(found);
 }
+#ifdef _WIN32
+std::wstring pathOfFileUrl(const std::wstring& url) {
+  std::wstring path = url.substr(7);
+  size_t found = path.find(L'/');
+  return (found == std::wstring::npos) ? path : path.substr(found);
+}
+#endif
 #endif
 
 }  // namespace
@@ -883,6 +890,68 @@ Image::UniquePtr ImageFactory::create(ImageType type, BasicIo::UniquePtr io) {
 
 // *****************************************************************************
 // template, inline and free functions
+
+#ifdef _WIN32
+BasicIo::UniquePtr ImageFactory::createIo(const std::wstring& wpath, [[maybe_unused]] bool useCurl) {
+  Protocol fProt = fileProtocol(wpath);
+
+#ifdef EXV_USE_CURL
+  if (useCurl && (fProt == pHttp || fProt == pHttps || fProt == pFtp)) {
+    return std::make_unique<CurlIo>(wpath);  // may throw
+  }
+#endif
+
+#ifdef EXV_ENABLE_WEBREADY
+  if (fProt == pHttp)
+    return std::make_unique<HttpIo>(wpath);  // may throw
+#endif
+#ifdef EXV_ENABLE_FILESYSTEM
+  if (fProt == pFileUri)
+    return std::make_unique<FileIo>(pathOfFileUrl(wpath));
+  if (fProt == pStdin || fProt == pDataUri)
+    return std::make_unique<XPathIo>(wpath);  // may throw
+
+  return std::make_unique<FileIo>(wpath);  // pass wstring directly — no double conversion
+#else
+  throw WError(ErrorCode::kerFileAccessDisabled, wpath);
+#endif
+}
+
+Image::UniquePtr ImageFactory::open(const std::wstring& wpath, bool useCurl) {
+  auto image = open(ImageFactory::createIo(wpath, useCurl));  // may throw
+  if (!image)
+    throw WError(ErrorCode::kerFileContainsUnknownImageType, wpath);
+  return image;
+}
+
+Image::UniquePtr ImageFactory::create(ImageType type, const std::wstring& wpath) {
+#ifdef EXV_ENABLE_FILESYSTEM
+  auto fileIo = std::make_unique<FileIo>(wpath);  // pass wstring directly
+  // Create or overwrite the file, then close it
+  if (fileIo->open("w+b") != 0) {
+    throw WError(ErrorCode::kerFileOpenFailed, wpath, L"w+b", s2ws(strError()));
+  }
+  fileIo->close();
+
+  BasicIo::UniquePtr io(std::move(fileIo));
+  auto image = create(type, std::move(io));
+  if (!image)
+    throw Error(ErrorCode::kerUnsupportedImageType, static_cast<int>(type));
+  return image;
+#else
+  throw WError(ErrorCode::kerFileAccessDisabled, wpath);
+#endif
+}
+
+ImageType ImageFactory::getType(const std::wstring& wpath) {
+#ifdef EXV_ENABLE_FILESYSTEM
+  FileIo fileIo(wpath);  // pass wstring directly
+  return getType(fileIo);
+#else
+  return ImageType::none;
+#endif
+}
+#endif
 
 void append(Blob& blob, const byte* buf, size_t len) {
   if (len != 0) {

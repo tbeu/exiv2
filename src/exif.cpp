@@ -88,6 +88,10 @@ class Thumbnail {
            (".tif", ".jpg").
    */
   [[nodiscard]] virtual const char* extension() const = 0;
+#ifdef _WIN32
+  //! Return the file extension as a wide string.
+  [[nodiscard]] virtual std::wstring wextension() const = 0;
+#endif
   //@}
 
 };  // class Thumbnail
@@ -103,6 +107,9 @@ class TiffThumbnail : public Thumbnail {
   [[nodiscard]] Exiv2::DataBuf copy(const Exiv2::ExifData& exifData) const override;
   [[nodiscard]] const char* mimeType() const override;
   [[nodiscard]] const char* extension() const override;
+#ifdef _WIN32
+  [[nodiscard]] std::wstring wextension() const override;
+#endif
   //@}
 
 };  // class TiffThumbnail
@@ -118,6 +125,9 @@ class JpegThumbnail : public Thumbnail {
   [[nodiscard]] Exiv2::DataBuf copy(const Exiv2::ExifData& exifData) const override;
   [[nodiscard]] const char* mimeType() const override;
   [[nodiscard]] const char* extension() const override;
+#ifdef _WIN32
+  [[nodiscard]] std::wstring wextension() const override;
+#endif
   //@}
 
 };  // class JpegThumbnail
@@ -388,6 +398,21 @@ size_t ExifThumbC::writeFile(const std::string& path) const {
 
   return Exiv2::writeFile(buf, name);
 }
+
+#ifdef _WIN32
+size_t ExifThumbC::writeFile(const std::wstring& wpath) const {
+  auto thumbnail = Thumbnail::create(exifData_);
+  if (!thumbnail)
+    return 0;
+
+  std::wstring name = wpath + thumbnail->wextension();
+  DataBuf buf(thumbnail->copy(exifData_));
+  if (buf.empty())
+    return 0;
+
+  return Exiv2::writeFile(buf, name);
+}
+#endif
 #endif
 
 const char* ExifThumbC::mimeType() const {
@@ -404,6 +429,15 @@ const char* ExifThumbC::extension() const {
   return thumbnail->extension();
 }
 
+#ifdef _WIN32
+std::wstring ExifThumbC::wextension() const {
+  auto thumbnail = Thumbnail::create(exifData_);
+  if (!thumbnail)
+    return {};
+  return thumbnail->wextension();
+}
+#endif
+
 ExifThumb::ExifThumb(ExifData& exifData) : ExifThumbC(exifData), exifData_(exifData) {
 }
 
@@ -412,6 +446,13 @@ void ExifThumb::setJpegThumbnail(const std::string& path, URational xres, URatio
   DataBuf thumb = readFile(path);  // may throw
   setJpegThumbnail(thumb.c_data(), thumb.size(), xres, yres, unit);
 }
+
+#ifdef _WIN32
+void ExifThumb::setJpegThumbnail(const std::wstring& wpath, URational xres, URational yres, uint16_t unit) {
+  DataBuf thumb = readFile(wpath);  // may throw
+  setJpegThumbnail(thumb.c_data(), thumb.size(), xres, yres, unit);
+}
+#endif
 #endif
 
 void ExifThumb::setJpegThumbnail(const byte* buf, size_t size, URational xres, URational yres, uint16_t unit) {
@@ -426,6 +467,13 @@ void ExifThumb::setJpegThumbnail(const std::string& path) {
   DataBuf thumb = readFile(path);  // may throw
   setJpegThumbnail(thumb.c_data(), thumb.size());
 }
+
+#ifdef _WIN32
+void ExifThumb::setJpegThumbnail(const std::wstring& wpath) {
+  DataBuf thumb = readFile(wpath);  // may throw
+  setJpegThumbnail(thumb.c_data(), thumb.size());
+}
+#endif
 #endif
 
 void ExifThumb::setJpegThumbnail(const byte* buf, size_t size) {
@@ -703,6 +751,12 @@ const char* TiffThumbnail::extension() const {
   return ".tif";
 }
 
+#ifdef _WIN32
+std::wstring TiffThumbnail::wextension() const {
+  return L".tif";
+}
+#endif
+
 Exiv2::DataBuf TiffThumbnail::copy(const Exiv2::ExifData& exifData) const {
   Exiv2::ExifData thumb;
   // Copy all Thumbnail (IFD1) tags from exifData to Image (IFD0) tags in thumb
@@ -727,6 +781,12 @@ const char* JpegThumbnail::mimeType() const {
 const char* JpegThumbnail::extension() const {
   return ".jpg";
 }
+
+#ifdef _WIN32
+std::wstring JpegThumbnail::wextension() const {
+  return L".jpg";
+}
+#endif
 
 Exiv2::DataBuf JpegThumbnail::copy(const Exiv2::ExifData& exifData) const {
   Exiv2::ExifKey key("Exif.Thumbnail.JPEGInterchangeFormat");

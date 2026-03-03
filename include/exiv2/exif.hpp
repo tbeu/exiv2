@@ -241,6 +241,14 @@ class EXIV2API ExifThumbC {
     @return The number of bytes written.
   */
   [[nodiscard]] size_t writeFile(const std::string& path) const;
+#ifdef _WIN32
+  /*!
+    @brief Like writeFile(const std::string& path) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  [[nodiscard]] size_t writeFile(const std::wstring& wpath) const;
+#endif
 #endif
   /*!
     @brief Return the MIME type of the thumbnail, either \c "image/tiff"
@@ -252,6 +260,13 @@ class EXIV2API ExifThumbC {
            (".tif" or ".jpg").
    */
   [[nodiscard]] const char* extension() const;
+#ifdef _WIN32
+  /*!
+    @brief Like extension() but returns the file extension as a wide string.
+    @note This function is only available on Windows.
+   */
+  [[nodiscard]] std::wstring wextension() const;
+#endif
   //@}
 
  private:
@@ -300,6 +315,14 @@ class EXIV2API ExifThumb : public ExifThumbC {
            application that comes with OS X for one.) - David Harvey.
    */
   void setJpegThumbnail(const std::string& path, URational xres, URational yres, uint16_t unit);
+#ifdef _WIN32
+  /*!
+    @brief Like setJpegThumbnail(const std::string&, URational, URational, uint16_t) but accepts
+        a unicode path in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  void setJpegThumbnail(const std::wstring& wpath, URational xres, URational yres, uint16_t unit);
+#endif
 #endif
   /*!
     @brief Set the Exif thumbnail to the JPEG image pointed to by \em buf,
@@ -334,6 +357,14 @@ class EXIV2API ExifThumb : public ExifThumbC {
     @note  Additional existing Exif thumbnail tags are not modified.
    */
   void setJpegThumbnail(const std::string& path);
+#ifdef _WIN32
+  /*!
+    @brief Like setJpegThumbnail(const std::string&) but accepts a unicode path
+        in an std::wstring.
+    @note This function is only available on Windows.
+   */
+  void setJpegThumbnail(const std::wstring& wpath);
+#endif
 #endif
   /*!
     @brief Set the Exif thumbnail to the JPEG image pointed to by \em buf,

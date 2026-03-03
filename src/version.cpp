@@ -34,7 +34,7 @@
 // platform specific support for getLoadedLibraries
 #if defined(_WIN32) || defined(__CYGWIN__)
 // clang-format off
-#include <winapifamily.h>
+//#include <winapifamily.h>
 #include <windows.h>
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
   #include <psapi.h>
@@ -317,6 +317,7 @@ void Exiv2::dumpLibraryInfo(std::ostream& os, const std::vector<std::regex>& key
   int enable_nls = 0;
   int enable_video = 0;
   int use_curl = 0;
+  int have_unicode_path = 0;
 
 #if __has_include(<inttypes.h>)
   have_inttypes = 1;
@@ -406,6 +407,10 @@ void Exiv2::dumpLibraryInfo(std::ostream& os, const std::vector<std::regex>& key
   enable_webready = 1;
 #endif
 
+#ifdef _WIN32
+  have_unicode_path = 1;
+#endif
+
 #ifdef EXV_ENABLE_NLS
   enable_nls = 1;
 #endif
@@ -482,6 +487,7 @@ void Exiv2::dumpLibraryInfo(std::ostream& os, const std::vector<std::regex>& key
   output(os, keys, "enable_nls", enable_nls);
   output(os, keys, "enable_video", enable_video);
   output(os, keys, "use_curl", use_curl);
+  output(os, keys, "have_unicode_path", have_unicode_path);
 
   output(os, keys, "config_path", Exiv2::Internal::getExiv2ConfigPath());
 

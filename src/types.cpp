@@ -21,6 +21,10 @@
 #include <sstream>
 #include <utility>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef EXV_ENABLE_NLS
 #include <libintl.h>
 #endif
@@ -646,6 +650,26 @@ Rational floatToRationalCast(float f) {
 
   return {nom / g, den / g};
 }
+
+#ifdef _WIN32
+std::wstring s2ws(const std::string& s) {
+  if (s.empty())
+    return {};
+  int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0);
+  std::wstring ws(len, 0);
+  MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), ws.data(), len);
+  return ws;
+}
+
+std::string ws2s(const std::wstring& s) {
+  if (s.empty())
+    return {};
+  int len = WideCharToMultiByte(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0, nullptr, nullptr);
+  std::string str(len, 0);
+  WideCharToMultiByte(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), str.data(), len, nullptr, nullptr);
+  return str;
+}
+#endif
 
 }  // namespace Exiv2
 

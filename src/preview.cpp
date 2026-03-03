@@ -351,7 +351,11 @@ Loader::Loader(PreviewId id, const Image& image) : id_(id), image_(image) {
 }
 
 PreviewProperties Loader::getProperties() const {
+#ifdef _WIN32
+  return {"", "", L"", size_, width_, height_, id_};
+#else
   return {"", "", size_, width_, height_, id_};
+#endif
 }
 
 PreviewId Loader::getNumLoaders() {
@@ -1012,6 +1016,15 @@ size_t PreviewImage::writeFile(const std::string& path) const {
   DataBuf buf(pData(), size());
   return Exiv2::writeFile(buf, name);
 }
+
+#ifdef _WIN32
+size_t PreviewImage::writeFile(const std::wstring& wpath) const {
+  std::wstring name = wpath + wextension();
+  // Todo: Creating a DataBuf here unnecessarily copies the memory
+  DataBuf buf(pData(), size());
+  return Exiv2::writeFile(buf, name);
+}
+#endif
 #endif
 
 DataBuf PreviewImage::copy() const {
@@ -1033,6 +1046,12 @@ std::string PreviewImage::mimeType() const {
 std::string PreviewImage::extension() const {
   return properties_.extension_;
 }
+
+#ifdef _WIN32
+std::wstring PreviewImage::wextension() const {
+  return properties_.wextension_;
+}
+#endif
 
 size_t PreviewImage::width() const {
   return properties_.width_;
@@ -1056,6 +1075,9 @@ PreviewPropertiesList PreviewManager::getPreviewProperties() const {
     auto loader = Loader::create(id, image_);
     if (loader && loader->readDimensions()) {
       PreviewProperties props = loader->getProperties();
+#ifdef _WIN32
+      props.wextension_ = s2ws(props.extension_);
+#endif
       DataBuf buf = loader->getData();  // #16 getPreviewImage()
       props.size_ = buf.size();         //     update the size
       list.push_back(std::move(props));

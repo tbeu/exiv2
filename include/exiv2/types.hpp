@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <limits>
 #include <sstream>
+#include <string>
 #include <vector>
 
 // *****************************************************************************
@@ -331,6 +332,23 @@ EXIV2API int exifTime(const char* buf, tm* tm);
          all the implementation details from the interface.
  */
 EXIV2API const char* exvGettext(const char* str);
+
+#ifdef _WIN32
+/*!
+  @brief Convert a UTF-8 encoded std::string to a std::wstring.
+  @param s UTF-8 encoded string.
+  @return The corresponding wide string.
+  @note This function is only available on Windows.
+ */
+EXIV2API std::wstring s2ws(const std::string& s);
+/*!
+  @brief Convert a std::wstring to a UTF-8 encoded std::string.
+  @param s Wide string.
+  @return The corresponding UTF-8 encoded string.
+  @note This function is only available on Windows.
+ */
+EXIV2API std::string ws2s(const std::wstring& s);
+#endif
 
 /*!
   @brief Return a \em int64_t set to the value represented by \em s.

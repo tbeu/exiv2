@@ -9,6 +9,7 @@
 #include "types.hpp"
 
 // + standard includes
+#include <cctype>
 #include <sstream>
 
 // *****************************************************************************
